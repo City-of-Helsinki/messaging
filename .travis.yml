@@ -1,0 +1,28 @@
+sudo: false
+language: python
+services:
+  - postgresql
+
+cache: pip
+
+env:
+  global:
+    - SECRET_KEY=xxx
+    - DATABASE_URL=postgis://postgres:@localhost/messaging
+
+python:
+  - "3.4"
+  - "3.5"
+  - "3.6"
+
+install:
+  - pip install -U pip
+  - pip install -r requirements.txt -r requirements-dev.txt
+
+before_script:
+  - psql -U postgres -c 'create database messaging;'
+
+script:
+  - flake8
+  - py.test -ra -vvv --cov=carrier --cov=messaging
+  - isort -c

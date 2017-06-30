@@ -1,0 +1,9 @@
+-c requirements.txt
+flake8
+ipython
+isort
+prequ
+pytest
+pytest-cov
+pytest-factoryboy
+pytest-django
