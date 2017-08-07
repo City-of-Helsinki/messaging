@@ -3,6 +3,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from carrier.models import Content, Message, Recipient
+from carrier.validators import OrValidator
 
 
 class CreateRelatedMixin:
@@ -65,6 +66,7 @@ class RecipientSerializer(EnumSupportSerializerMixin, serializers.ModelSerialize
         model = Recipient
         fields = '__all__'
         read_only_fields = ('message', 'transport', 'status')
+        validators = [OrValidator(fields=['email', 'uuid', 'phone'])]
 
 
 class ContentSerializer(serializers.ModelSerializer):

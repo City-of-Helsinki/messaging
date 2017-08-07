@@ -3,24 +3,42 @@ from enumfields import Enum
 
 
 class RecipientStatus(Enum):
-    PENDING = 'pending'
+    PENDING_INFO = 'pending_info'
+    READY_TO_SEND = 'ready_to_send'
+    SENDING = 'sending'
     SENT = 'sent'
     ERROR = 'error'
 
     class Labels:
-        PENDING = _('Pending')
+        PENDING_INFO = _('Pending information')
+        READY_TO_SEND = _('Ready to send')
+        SENDING = _('Sending')
         SENT = _('Sent')
         ERROR = _('Error')
 
 
 class MessageStatus(Enum):
-    PENDING = 'pending'
-    PROCESSED = 'processed'
+    PENDING_INFO = 'pending_info'
+    FETCHING_INFO = 'fetching_info'
+    READY_TO_SEND = 'ready_to_send'
+    SENDING = 'sending'
+    SENT = 'sent'
     ERROR = 'error'
     ARCHIVED = 'archived'
 
     class Labels:
-        PENDING = _('Pending')
-        PROCESSED = _('Processed')
+        PENDING_INFO = _('Pending information')
+        FETCHING_INFO = _('Fetching information')
+        SENDING = _('Sending')
+        SENT = _('Sent')
         ERROR = _('Error')
         ARCHIVED = _('Archived')
+
+
+class TransportType(Enum):
+    EMAIL = 'email'
+    SMS = 'sms'
+
+    class Labels:
+        EMAIL = _('Email')
+        SMS = _('SMS')

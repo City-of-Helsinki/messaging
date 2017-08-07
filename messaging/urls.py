@@ -19,6 +19,7 @@ from django.contrib import admin
 from django.views.generic.base import RedirectView
 
 from carrier.api import APIRouter
+from carrier.views import get_contact_info
 
 admin.autodiscover()
 
@@ -29,5 +30,6 @@ urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^v1/', include(router.urls)),
     url(r'^auth/', include(rest_framework.urls, namespace='rest_framework')),
+    url(r'^get_contact_info/', get_contact_info),
     url(r'^$', RedirectView.as_view(url='v1/'))
 ]
