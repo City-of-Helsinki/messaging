@@ -8,6 +8,9 @@ class DummyModel(models.Model):
     field1 = models.CharField(max_length=100, null=True)
     field2 = models.CharField(max_length=100, null=True)
 
+    class Meta:
+        managed = False
+
 
 class DummySerializer(serializers.ModelSerializer):
     class Meta:

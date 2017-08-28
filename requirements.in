@@ -1,4 +1,5 @@
 Django
+celery[redis]
 psycopg2
 djangorestframework
 django-enumfields

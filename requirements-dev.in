@@ -7,3 +7,4 @@ pytest
 pytest-cov
 pytest-factoryboy
 pytest-django
+requests-mock

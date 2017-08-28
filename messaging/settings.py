@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
 
     # Apps within this repository
     'carrier'
@@ -118,15 +119,14 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 REST_FRAMEWORK = {
-    # 'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.NamespaceVersioning',
-    # 'ALLOWED_VERSIONS': ('v1',),
+    'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.NamespaceVersioning',
+    'ALLOWED_VERSIONS': ('v1',),
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.DjangoModelPermissions', ],
-    # 'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend', ],
-    # 'DEFAULT_METADATA_CLASS': '',
 }
 
 CONTACT_INFO_URL = 'http://example.com/'
@@ -134,6 +134,7 @@ CONTACT_INFO_URL = 'http://example.com/'
 CARRIER_CONTENT_LANGUAGES = ['fi', 'sv', 'en']
 
 CARRIER_TRANSPORT_CLASSES = [
+    'carrier.transports.PushbulletTransport',
     'carrier.transports.MailGunTransport',
     'carrier.transports.DummySmsTransport',
 ]

@@ -8,7 +8,7 @@ cache: pip
 env:
   global:
     - SECRET_KEY=xxx
-    - DATABASE_URL=postgis://postgres:@localhost/messaging
+    - DATABASE_URL=postgres://postgres:@localhost/messaging
 
 python:
   - "3.4"

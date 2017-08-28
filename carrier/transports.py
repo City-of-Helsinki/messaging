@@ -80,7 +80,7 @@ class MailGunTransport(TransportBase):
                     message.id, content.id, len(lang_recipients), e))
 
         return {
-            "success": bool(errors),
+            "success": not bool(errors),
             "errors": errors,
         }
 
@@ -110,6 +110,50 @@ class DummySmsTransport(TransportBase):
         return {
             "success": True,
             "errors": [],
+        }
+
+
+class PushbulletTransport(TransportBase):
+    def __init__(self):
+        self.transport_type = TransportType.PUSHBULLET
+
+    def is_valid(self):
+        return True
+
+    def is_suitable_for_recipient(self, recipient):
+        return bool(recipient.get_pushbullet_access_token())
+
+    def send(self, message, recipients):
+        errors = []
+        for recipient in recipients:
+            content = message.get_content_in_language(recipient.get_language())
+
+            text = content.short_text if content.short_text else content.text
+
+            try:
+                r = requests.post('https://api.pushbullet.com/v2/pushes', json={
+                    'body': text,
+                    'title': content.subject,
+                    'type': 'note',
+                }, headers={
+                    'Access-Token': recipient.get_pushbullet_access_token(),
+                    'Content-Type': 'application/json'
+                })
+
+                r.raise_for_status()
+
+                recipient.transport = self.transport_type
+                recipient.lang = content.language
+                recipient.status = RecipientStatus.SENT
+                recipient.save()
+            except RequestException as e:
+                errors.append(
+                    'Error when trying to send message "{}", content "{}" to {} recipient(s): "{}"'.format(
+                        message.id, content.id, recipients, e))
+
+        return {
+            "success": not bool(errors),
+            "errors": errors,
         }
 
 

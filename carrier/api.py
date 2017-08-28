@@ -1,4 +1,5 @@
 from rest_framework import mixins, routers
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import GenericViewSet
 
 from carrier.serializers import MessageSerializer
@@ -36,8 +37,17 @@ class APIRouter(routers.DefaultRouter):
 
 
 class MessageViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.ListModelMixin, GenericViewSet):
+    permission_classes = (IsAuthenticated,)
     queryset = Message.objects.all()
     serializer_class = MessageSerializer
+
+    def create(self, request, *args, **kwargs):
+        from .tasks import send_messages
+        send_messages.delay()
+
+        response = super().create(request, *args, **kwargs)
+
+        return response
 
 
 register_view(MessageViewSet, 'message')

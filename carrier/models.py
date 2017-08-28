@@ -1,12 +1,14 @@
 import uuid
+from collections import defaultdict
 
+import requests
+from django.conf import settings
 from django.conf.global_settings import LANGUAGES
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 from enumfields import EnumField
-
-from messaging import settings
 
 from .enums import MessageStatus, RecipientStatus, TransportType
 
@@ -15,8 +17,19 @@ class Contact(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.CharField(max_length=100, null=True, blank=True)
     phone = models.CharField(max_length=100, null=True, blank=True)
+    pushbullet_access_token = models.CharField(max_length=100, null=True, blank=True)
     language = models.CharField(max_length=7, choices=LANGUAGES, null=True, blank=True)
     preferred_transport = EnumField(TransportType, max_length=100, null=True, blank=True)
+
+
+class MessageSendResult:
+    def __init__(self, errors=None, warnings=None, sent=None):
+        self.errors = errors
+        self.warning = warnings
+        self.sent = sent
+
+    def has_errors(self):
+        return bool(self.errors)
 
 
 class Message(models.Model):
@@ -28,7 +41,7 @@ class Message(models.Model):
     created_at = models.DateTimeField(editable=False, blank=True, auto_now_add=True)
     status = EnumField(MessageStatus, max_length=255, default=MessageStatus.PENDING_INFO)
 
-    def is_sendable(self):
+    def validate(self):
         errors = []
         if self.status != MessageStatus.READY_TO_SEND:
             errors.append('Status is not "{}", but "{}".'.format(MessageStatus.READY_TO_SEND, self.status))
@@ -41,24 +54,106 @@ class Message(models.Model):
 
         return False if errors else True, errors
 
-    def get_content_languages(self):
-        languages = []
-        for content in self.contents.all():
-            languages.append(content.language if content.language else settings.CARRIER_CONTENT_LANGUAGES[0])
+    def is_sendable(self):
+        return self.validate()[0]
 
-        return languages
+    def get_validation_errors(self):
+        return self.validate()[1]
+
+    def get_content_languages(self):
+        return set(self.contents.all().values_list('language', flat=True))
 
     def get_content_in_language(self, language):
         available_languages = self.get_content_languages()
 
         if language not in available_languages:
-            # Sort available content languages by CARRIER_CONTENT_LANGUAGES
-            ordered_languages = [x for (y, x) in sorted(zip(settings.CARRIER_CONTENT_LANGUAGES, available_languages))]
+            # Sort available content languages by CARRIER_CONTENT_LANGUAGES and take the first available
+            ordered_languages = list(available_languages)
+            ordered_languages.sort(key=lambda x: settings.CARRIER_CONTENT_LANGUAGES.index(x) if
+                                   x in settings.CARRIER_CONTENT_LANGUAGES else 9999)
             language = ordered_languages[0]
 
         content = self.contents.filter(language=language).first()
 
         return content
+
+    def fetch_contact_info_for_recipients(self):
+        # Gather the uuids of the contacts we need to fetch info for
+        recipient_uuids = [
+            str(v) for v in self.recipients.filter(uuid__isnull=False, contact__isnull=True).values_list(
+                'uuid', flat=True)]
+
+        if not recipient_uuids:
+            return
+
+        url = '{}?ids={}'.format(settings.CONTACT_INFO_URL, ','.join(recipient_uuids))
+
+        r = requests.get(url)
+        r.raise_for_status()
+
+        for contact_id, contact_info in r.json().items():
+            Contact.objects.update_or_create(
+                id=contact_id,
+                email=contact_info.get('email'),
+                pushbullet_access_token=contact_info.get('pushbullet'),
+                phone=contact_info.get('phone'),
+                language=contact_info.get('language'),
+                preferred_transport=contact_info.get('contact_method')
+            )
+            # self.recipients.filter(uuid=contact_id).update(contact=contact)
+
+    def attach_contacts_to_recipients(self):
+        for recipient in self.recipients.filter(status=RecipientStatus.PENDING_INFO):
+            recipient.attach_contact()
+
+    def validate_recipients(self, transports):
+        for recipient in self.recipients.filter():
+            # Check that at least one transport can send to the recipient
+            for transport in transports:
+                if transport.is_suitable_for_recipient(recipient):
+                    recipient.status = RecipientStatus.READY_TO_SEND
+                    break
+            else:
+                recipient.status = RecipientStatus.IGNORED
+
+            recipient.save()
+
+        self.status = MessageStatus.READY_TO_SEND
+        self.save()
+
+    def send(self, transports):
+        if not self.is_sendable():
+            return MessageSendResult(errors=self.get_validation_errors(), sent=False)
+
+        self.status = MessageStatus.SENDING
+        self.save()
+
+        errors = []
+        warnings = []
+        transport_recipients = defaultdict(list)
+        for recipient in self.recipients.filter(status=RecipientStatus.READY_TO_SEND):
+            for transport in transports:
+                # Use the first suitable transport
+                if transport.is_suitable_for_recipient(recipient):
+                    transport_recipients[transport].append(recipient)
+                    break
+            else:
+                warnings.append('No suitable transport found for recipient id {}. Skipping.'.format(recipient.id))
+
+        for transport, recipients in transport_recipients.items():
+            result = transport.send(self, recipients)
+            errors.extend(result['errors'])
+
+        self.sent_at = timezone.now()
+
+        if not errors:
+            self.status = MessageStatus.SENT
+        else:
+            self.status = MessageStatus.ERROR
+
+        self.save()
+
+        return MessageSendResult(errors=errors, warnings=warnings, sent=True)
 
 
 class Recipient(models.Model):
@@ -89,6 +184,12 @@ class Recipient(models.Model):
 
         return None
 
+    def get_pushbullet_access_token(self):
+        if self.contact and self.contact.pushbullet_access_token:
+            return self.contact.pushbullet_access_token
+
+        return None
+
     def get_language(self):
         if self.language:
             return self.language
@@ -100,6 +201,17 @@ class Recipient(models.Model):
             return settings.CARRIER_CONTENT_LANGUAGES[0]
 
         return None
+
+    def attach_contact(self):
+        if not self.uuid or self.contact:
+            return
+
+        try:
+            self.contact = Contact.objects.get(pk=self.uuid)
+        except Contact.DoesNotExist:
+            pass
+
+        self.save()
 
 
 class Content(models.Model):
