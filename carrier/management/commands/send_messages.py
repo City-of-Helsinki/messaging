@@ -49,6 +49,12 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.WARNING(' Message "{}" does not exist. Skipping.'.format(message_id)))
                 continue
 
+            if message.status not in [MessageStatus.PENDING_INFO, MessageStatus.READY_TO_SEND]:
+                self.stdout.write(self.style.WARNING(
+                    ' Message "{}" status is not "{}" or "{}". Skipping.'.format(message_id, MessageStatus.PENDING_INFO,
+                        MessageStatus.READY_TO_SEND)))
+                continue
+
             message.fetch_contact_info_for_recipients()
             message.attach_contacts_to_recipients()
             message.validate_recipients(transports)
@@ -60,3 +66,6 @@ class Command(BaseCommand):
 
             if result.errors:
                 self.stdout.write(self.style.WARNING(' Errors: ' + ', '.join(result.errors)))
+                message.status = MessageStatus.ERROR
+
+            message.save()

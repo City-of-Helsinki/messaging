@@ -41,13 +41,12 @@ class MessageViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
     queryset = Message.objects.all()
     serializer_class = MessageSerializer
 
-    def create(self, request, *args, **kwargs):
-        from .tasks import send_messages
-        send_messages.delay()
+    def perform_create(self, serializer):
+        from .tasks import send_message
 
-        response = super().create(request, *args, **kwargs)
+        serializer.save()
 
-        return response
+        send_message.delay(serializer.instance.id)
 
 
 register_view(MessageViewSet, 'message')
