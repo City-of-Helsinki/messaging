@@ -48,4 +48,3 @@ def send_message(message_id):
         message.status = MessageStatus.ERROR
 
     message.save()
-

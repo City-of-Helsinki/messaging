@@ -51,8 +51,8 @@ class Command(BaseCommand):
 
             if message.status not in [MessageStatus.PENDING_INFO, MessageStatus.READY_TO_SEND]:
                 self.stdout.write(self.style.WARNING(
-                    ' Message "{}" status is not "{}" or "{}". Skipping.'.format(message_id, MessageStatus.PENDING_INFO,
-                        MessageStatus.READY_TO_SEND)))
+                    ' Message "{}" status is not "{}" or "{}". Skipping.'.format(
+                        message_id, MessageStatus.PENDING_INFO, MessageStatus.READY_TO_SEND)))
                 continue
 
             message.fetch_contact_info_for_recipients()
