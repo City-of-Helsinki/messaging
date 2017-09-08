@@ -88,10 +88,13 @@ class Message(models.Model):
 
         url = '{}?ids={}'.format(settings.CONTACT_INFO_URL, ','.join(recipient_uuids))
 
-        r = requests.get(url)
+        r = requests.get(url, auth=(settings.TUNNISTAMO_USERNAME, settings.TUNNISTAMO_PASSWORD))
         r.raise_for_status()
 
         for contact_id, contact_info in r.json().items():
+            if not contact_info.get('contact_method'):
+                continue
+
             Contact.objects.update_or_create(
                 id=contact_id,
                 email=contact_info.get('email'),

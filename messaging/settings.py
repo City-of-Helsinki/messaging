@@ -142,6 +142,9 @@ CARRIER_TRANSPORT_CLASSES = [
 MAILGUN_DOMAIN = 'example.com'
 MAILGUN_API_KEY = 'key-12345123451234512345123451234512'
 
+TUNNISTAMO_USERNAME = ''
+TUNNISTAMO_PASSWORD = ''
+
 # local_settings.py can be used to override environment-specific settings
 # like database and email that differ between development and production.
 local_settings_path = os.path.join(BASE_DIR, "local_settings.py")
