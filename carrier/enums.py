@@ -41,8 +41,10 @@ class TransportType(Enum):
     EMAIL = 'email'
     PUSHBULLET = 'pushbullet'
     SMS = 'sms'
+    FIREBASE = 'firebase'
 
     class Labels:
         EMAIL = _('Email')
         PUSHBULLET = _('Pushbullet')
         SMS = _('SMS')
+        FIREBASE = _('Firebase')

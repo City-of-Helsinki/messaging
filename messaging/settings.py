@@ -134,6 +134,7 @@ CONTACT_INFO_URL = 'http://example.com/'
 CARRIER_CONTENT_LANGUAGES = ['fi', 'sv', 'en']
 
 CARRIER_TRANSPORT_CLASSES = [
+    'carrier.transports.FirebaseMessagingTransport',
     'carrier.transports.PushbulletTransport',
     'carrier.transports.MailGunTransport',
     'carrier.transports.DummySmsTransport',
@@ -141,6 +142,8 @@ CARRIER_TRANSPORT_CLASSES = [
 
 MAILGUN_DOMAIN = 'example.com'
 MAILGUN_API_KEY = 'key-12345123451234512345123451234512'
+
+FIREBASE_API_KEY = ''
 
 TUNNISTAMO_USERNAME = ''
 TUNNISTAMO_PASSWORD = ''

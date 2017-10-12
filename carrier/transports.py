@@ -4,6 +4,7 @@ from importlib import import_module
 
 import requests
 from django.conf import settings
+from pyfcm import FCMNotification
 from requests import RequestException
 
 from carrier.enums import RecipientStatus, TransportType
@@ -150,6 +151,52 @@ class PushbulletTransport(TransportBase):
                 errors.append(
                     'Error when trying to send message "{}", content "{}" to {} recipient(s): "{}"'.format(
                         message.id, content.id, recipients, e))
+
+        return {
+            "success": not bool(errors),
+            "errors": errors,
+        }
+
+
+class FirebaseMessagingTransport(TransportBase):
+    def __init__(self):
+        self.transport_type = TransportType.FIREBASE
+
+    def is_valid(self):
+        if getattr(settings, 'FIREBASE_API_KEY', None):
+            return True
+
+        return False
+
+    def is_suitable_for_recipient(self, recipient):
+        return bool(recipient.get_firebase_token())
+
+    def send(self, message, recipients):
+        recipients_by_language = defaultdict(list)
+        for recipient in recipients:
+            recipients_by_language[recipient.get_language()].append(recipient)
+
+        push_service = FCMNotification(api_key=settings.FIREBASE_API_KEY)
+
+        errors = []
+        for language, lang_recipients in recipients_by_language.items():
+            content = message.get_content_in_language(language)
+
+            message.recipients.filter(id__in=[recipient.id for recipient in lang_recipients]).update(
+                status=RecipientStatus.SENDING)
+
+            registration_ids = [r.get_firebase_token() for r in lang_recipients]
+
+            result = push_service.notify_multiple_devices(
+                registration_ids=registration_ids, message_title=content.subject, message_body=content.text)
+
+            # TODO: check result
+
+            for recipient in lang_recipients:
+                recipient.transport = self.transport_type
+                recipient.language = language
+                recipient.status = RecipientStatus.SENT
+                recipient.save()
 
         return {
             "success": not bool(errors),

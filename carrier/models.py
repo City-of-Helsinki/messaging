@@ -18,6 +18,7 @@ class Contact(models.Model):
     email = models.CharField(max_length=100, null=True, blank=True)
     phone = models.CharField(max_length=100, null=True, blank=True)
     pushbullet_access_token = models.CharField(max_length=100, null=True, blank=True)
+    firebase_token = models.CharField(max_length=255, null=True, blank=True)
     language = models.CharField(max_length=7, choices=LANGUAGES, null=True, blank=True)
     preferred_transport = EnumField(TransportType, max_length=100, null=True, blank=True)
 
@@ -99,6 +100,7 @@ class Message(models.Model):
                 id=contact_id,
                 email=contact_info.get('email'),
                 pushbullet_access_token=contact_info.get('pushbullet'),
+                firebase_token=contact_info.get('firebase'),
                 phone=contact_info.get('phone'),
                 language=contact_info.get('language'),
                 preferred_transport=contact_info.get('contact_method')
@@ -190,6 +192,12 @@ class Recipient(models.Model):
     def get_pushbullet_access_token(self):
         if self.contact and self.contact.pushbullet_access_token:
             return self.contact.pushbullet_access_token
+
+        return None
+
+    def get_firebase_token(self):
+        if self.contact and self.contact.firebase_token:
+            return self.contact.firebase_token
 
         return None
 
